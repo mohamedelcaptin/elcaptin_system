@@ -33,10 +33,7 @@ if not exist venv\Scripts\python.exe (
 REM ===== Start the Streamlit app in a separate window so this script can continue =====
 start "" venv\Scripts\python.exe -m streamlit run "%~dp0Phone_Shop_SQLite_System.py"
 
-REM ===== Git auto-push every hour =====
-REM NOTE: embedding a PAT in a script is insecure. Consider using an environment variable or Windows Credential Manager instead.
-set GIT_TOKEN=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
-set REPO_URL=https://%GIT_TOKEN%@github.com/mohamedelcaptin/elcaptin_system.git
+
 
 REM Check for git
 git --version >nul 2>&1
