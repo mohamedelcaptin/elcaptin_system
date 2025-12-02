@@ -453,155 +453,263 @@ elif menu == "البضاعة":
         # عرض جدول مجمع بعد الأزرار
         st.markdown("---")
         st.dataframe(grouped, use_container_width=True)
-
 # ==========================
 # المكن
 # ==========================
 elif menu == "المكن":
-    st.header("\U0001F3E7 إدارة المكن")
+    st.header("🏧 إدارة المكن")
 
     machines = ["فوري 1", "فوري 2", "ممكن"]
 
     # خانة إدخال أرقام حرة منفصلة
-    st.subheader("\U0001F522 خانة أرقام حرة (لا ترتبط بأي بيانات)")
+    st.subheader("🔢 خانة أرقام حرة (لا ترتبط بأي بيانات)")
     free_number_df = load_data("free_number")
     if not free_number_df.empty and "القيمة" in free_number_df.columns:
         last_value = int(pd.to_numeric(free_number_df.iloc[-1]["القيمة"], errors="coerce"))
     else:
         last_value = 0
-    free_number = st.number_input("أدخل أي رقم تريده هنا", min_value=-10**12, value=last_value, step=1, key="free_number")
-    if st.button("تسجيل الرقم الحر"):
+
+    free_number = st.number_input(
+        "أدخل أي رقم تريده هنا",
+        min_value=-10**12,
+        value=last_value,
+        step=1,
+        key="free_number"
+    )
+
+    if st.button("💾 تسجيل الرقم الحر"):
         overwrite_data("free_number", pd.DataFrame({"القيمة": [free_number]}))
         add_log(f"تسجيل رقم حر في صفحة المكن: {free_number}")
         st.success("تم تسجيل الرقم الحر ✅")
         st.rerun()
 
-    # تحميل/تهيئة بيانات اليوم
+    # تحميل/تهيئة بيانات الأرصدة اليومية للمكن
     daily_df = load_data(MACHINE_DAILY_FILE)
+    expected_cols = ["المكنة", "رصيد الفتح", "رصيد مضاف", "رصيد نهاية"]
+
+    # تأمين الأعمدة المطلوبة
+    for c in expected_cols:
+        if c not in daily_df.columns:
+            daily_df[c] = 0
+
+    if not daily_df.empty:
+        daily_df = daily_df[expected_cols]
+
     if daily_df.empty:
+        # أول مرة: أنشئ صف لكل ماكينة
+        rows = []
         for m in machines:
-            save_row(MACHINE_DAILY_FILE, [m, 0, 0, 0])
-        daily_df = load_data(MACHINE_DAILY_FILE)
+            rows.append([m, 0, 0, 0])
+        daily_df = pd.DataFrame(rows, columns=expected_cols)
+        overwrite_data(MACHINE_DAILY_FILE, daily_df)
 
     # واجهة إدخال لكل ماكينة (الرصيد ممكن يبقى بالسالب)
+    st.subheader("📲 بيانات اليوم لكل ماكينة")
     totals_sold = 0
-    st.subheader("\U0001F4E5 بيانات اليوم لكل ماكينة")
+    edited_df = daily_df.copy()
+
     for i, row in daily_df.iterrows():
-        st.markdown(f"### \U0001F4B3 {row['المكنة']}")
+        st.markdown(f"### 💳 {row['المكنة']}")
         c1, c2, c3 = st.columns(3)
+
         with c1:
-            open_balance = st.number_input("رصيد فتح", min_value=-10**12, value=int(safe_int(row['رصيد الفتح'])), step=1, key=f"open_{i}")
+            open_balance = st.number_input(
+                "رصيد فتح",
+                min_value=-10**12,
+                value=int(safe_int(row['رصيد الفتح'])),
+                step=1,
+                key=f"open_{i}"
+            )
         with c2:
-            added = st.number_input("رصيد مضاف", min_value=-10**12, value=int(safe_int(row['رصيد مضاف'])), step=1, key=f"add_{i}")
+            added = st.number_input(
+                "رصيد مضاف",
+                min_value=-10**12,
+                value=int(safe_int(row['رصيد مضاف'])),
+                step=1,
+                key=f"add_{i}"
+            )
         with c3:
-            end_balance = st.number_input("رصيد نهاية", min_value=-10**12, value=int(safe_int(row['رصيد نهاية'])), step=1, key=f"end_{i}")
+            end_balance = st.number_input(
+                "رصيد نهاية",
+                min_value=-10**12,
+                value=int(safe_int(row['رصيد نهاية'])),
+                step=1,
+                key=f"end_{i}"
+            )
 
         sold = int(open_balance) + int(added) - int(end_balance)
         totals_sold += sold
-        st.write(f"\U0001F9EE المباع (الفلوس في الدُرج من هذه المكنة): **{int(sold)}**")
+        st.write(f"🧮 المباع (الفلوس في الدُرج من هذه المكنة): **{int(sold)}**")
 
-        daily_df.at[i, 'رصيد الفتح'] = int(open_balance)
-        daily_df.at[i, 'رصيد مضاف'] = int(added)
-        daily_df.at[i, 'رصيد نهاية'] = int(end_balance)
+        edited_df.at[i, 'رصيد الفتح'] = int(open_balance)
+        edited_df.at[i, 'رصيد مضاف'] = int(added)
+        edited_df.at[i, 'رصيد نهاية'] = int(end_balance)
 
-    overwrite_data(MACHINE_DAILY_FILE, daily_df)
+    # زرار صريح لحفظ حالة الأرصدة اليومية في الجدول
+    if st.button("💾 حفظ حالة أرصدة المكن لليوم"):
+        overwrite_data(MACHINE_DAILY_FILE, edited_df)
+        add_log("حفظ حالة أرصدة المكن لليوم")
+        st.success("تم حفظ الأرصدة اليومية للمكن ✅")
+        st.rerun()
 
+    # التعامل مع جدول ملخص أيام المكن (MACHINE_DAY_META_FILE)
     today_str = datetime.now().strftime("%Y-%m-%d")
     meta = load_data(MACHINE_DAY_META_FILE)
-    row_today = meta[meta['التاريخ'] == today_str] if not meta.empty else pd.DataFrame()
+
+    meta_expected_cols = [
+        "التاريخ",
+        "تحصيل الشركة (إجمالي)",
+        "فلوس الدُرج قبل التحصيل",
+        "فلوس معايا بعد التحصيل",
+        "فلوس معايا تراكمي",
+    ]
+
+    # تأمين الأعمدة
+    for c in meta_expected_cols:
+        if c not in meta.columns:
+            meta[c] = 0
+
+    if not meta.empty:
+        meta = meta[meta_expected_cols]
+    else:
+        meta = pd.DataFrame(columns=meta_expected_cols)
+
+    # حساب التراكمي السابق (آخر يوم أقل من اليوم)
     prev_cumulative = 0
     if not meta.empty:
         try:
-            meta_sorted = meta.sort_values('التاريخ')
-            prev_rows = meta_sorted[meta_sorted['التاريخ'] < today_str]
+            meta_sorted = meta.sort_values("التاريخ")
+            prev_rows = meta_sorted[meta_sorted["التاريخ"] < today_str]
             if not prev_rows.empty:
-                prev_cumulative = int(safe_int(prev_rows.iloc[-1].get('فلوس معايا تراكمي', 0)))
-            else:
-                prev_cumulative = int(safe_int(meta_sorted.iloc[-1].get('فلوس معايا تراكمي', 0)))
+                prev_cumulative = int(safe_int(prev_rows.iloc[-1]["فلوس معايا تراكمي"]))
         except Exception:
-            prev_cumulative = int(safe_int(meta.iloc[-1].get('فلوس معايا تراكمي', 0))) if not meta.empty else 0
+            prev_cumulative = 0
 
+    # سطر اليوم (إن وجد) أو إنشاؤه
+    row_today = meta[meta["التاريخ"] == today_str]
     if row_today.empty:
-        initial_cash_after = int(totals_sold)
-        initial_cumulative = int(prev_cumulative + initial_cash_after)
-        save_row(MACHINE_DAY_META_FILE, [today_str, 0, int(totals_sold), int(initial_cash_after), int(initial_cumulative)])
-        meta = load_data(MACHINE_DAY_META_FILE)
-        row_today = meta[meta['التاريخ'] == today_str]
+        new_row = pd.DataFrame(
+            [[today_str, 0, int(totals_sold), int(totals_sold), int(prev_cumulative + totals_sold)]],
+            columns=meta_expected_cols
+        )
+        meta = pd.concat([meta, new_row], ignore_index=True)
+        row_today = new_row
 
-    current_collect = int(safe_int(row_today['تحصيل الشركة (إجمالي)'].iloc[0]))
-    current_drawer = int(safe_int(row_today['فلوس الدُرج قبل التحصيل'].iloc[0]))
-    current_cash_after = int(safe_int(row_today['فلوس معايا بعد التحصيل'].iloc[0]))
-    current_cumulative = int(safe_int(row_today['فلوس معايا تراكمي'].iloc[0]))
+    # قراءة القيم الحالية لليوم
+    current_collect = int(safe_int(row_today["تحصيل الشركة (إجمالي)"].iloc[0]))
+    current_drawer = int(safe_int(row_today["فلوس الدُرج قبل التحصيل"].iloc[0]))
+    current_cash_after = int(safe_int(row_today["فلوس معايا بعد التحصيل"].iloc[0]))
+    current_cumulative = int(safe_int(row_today["فلوس معايا تراكمي"].iloc[0]))
 
     st.markdown("---")
     c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("\U0001F9FE فلوس الدُرج (اجمالي كل المكن)", int(totals_sold))
-    with c2:
-        new_collect = st.number_input("\U0001F3E6 تحصيل الشركة (إجمالي اليوم)", min_value=-10**12, value=int(current_collect), step=1, key="collect_total")
-    with c3:
-        auto_sync = st.checkbox("تفعيل التحديث التلقائي (فلوس معايا = فلوس الدُرج - تحصيل)", value=True, key="machine_auto_sync")
-        if auto_sync:
-            computed = int(totals_sold) - int(new_collect)
-            cash_after_input = st.number_input("\U0001F4BC الفلوس معايا بعد التحصيل (تلقائي)", min_value=-10**12, value=int(computed), step=1, key="cash_after_edit_auto")
-        else:
-            cash_after_input = st.number_input("\U0001F4BC الفلوس معايا بعد التحصيل (تعديل يدوي)", min_value=-10**12, value=int(current_cash_after), step=1, key="cash_after_edit_manual")
 
+    with c1:
+        st.metric("💰 فلوس الدُرج (إجمالي كل المكن)", int(totals_sold))
+
+    with c2:
+        new_collect = st.number_input(
+            "🏦 تحصيل الشركة (إجمالي اليوم)",
+            min_value=-10**12,
+            value=int(current_collect),
+            step=1,
+            key="collect_total"
+        )
+
+    # تهيئة قيمة الفلوس معايا في الـ session_state أول مرة
+    if "cash_after" not in st.session_state:
+        st.session_state["cash_after"] = int(current_cash_after)
+
+    with c3:
+        auto_sync = st.checkbox(
+            "تفعيل التحديث التلقائي (فلوس معايا = فلوس الدُرج - تحصيل)",
+            value=True,
+            key="machine_auto_sync"
+        )
+
+        # لو التحديث التلقائي شغال: كل ما تحصيل الشركة أو إجمالي الدرج يتغير
+        # نعيد حساب الفلوس معايا ونحطها في السيشن
+        if auto_sync:
+            st.session_state["cash_after"] = int(totals_sold) - int(new_collect)
+
+        # نعرض القيمة في number_input (وتتحدّث أوتوماتيك مع أي تغيير)
+        cash_after_input = st.number_input(
+            "💼 الفلوس معايا بعد التحصيل",
+            min_value=-10**12,
+            value=int(st.session_state["cash_after"]),
+            step=1,
+            key="cash_after"
+        )
+
+    # حساب التراكمي لليوم بناءً على آخر تراكمي قبل اليوم
     today_cumulative = int(prev_cumulative) + int(cash_after_input)
 
-    if meta is None or meta.empty:
-        save_row(MACHINE_DAY_META_FILE, [today_str, int(new_collect), int(totals_sold), int(cash_after_input), int(today_cumulative)])
-        meta = load_data(MACHINE_DAY_META_FILE)
-    else:
-        meta.loc[meta['التاريخ'] == today_str, 'تحصيل الشركة (إجمالي)'] = int(new_collect)
-        meta.loc[meta['التاريخ'] == today_str, 'فلوس الدُرج قبل التحصيل'] = int(totals_sold)
-        meta.loc[meta['التاريخ'] == today_str, 'فلوس معايا بعد التحصيل'] = int(cash_after_input)
-        meta.loc[meta['التاريخ'] == today_str, 'فلوس معايا تراكمي'] = int(today_cumulative)
-        overwrite_data(MACHINE_DAY_META_FILE, meta)
+    # تحديث/حفظ سطر اليوم في meta
+    meta.loc[meta["التاريخ"] == today_str, "تحصيل الشركة (إجمالي)"] = int(new_collect)
+    meta.loc[meta["التاريخ"] == today_str, "فلوس الدُرج قبل التحصيل"] = int(totals_sold)
+    meta.loc[meta["التاريخ"] == today_str, "فلوس معايا بعد التحصيل"] = int(cash_after_input)
+    meta.loc[meta["التاريخ"] == today_str, "فلوس معايا تراكمي"] = int(today_cumulative)
+    overwrite_data(MACHINE_DAY_META_FILE, meta)
 
     quick_calc_cash_after = int(totals_sold) - int(new_collect)
-    st.caption(f"الحساب السريع (فلوس الدُرج - تحصيل الشركة) = {int(quick_calc_cash_after)}. قيمة 'الفلوس معايا تراكمي' اليوم = {int(today_cumulative)}. اختر 'تعطيل التحديث التلقائي' لو تريد إدخال قيمة يدويّة وتثبيتها.")
+    st.caption(
+        f"الحساب السريع (فلوس الدُرج - تحصيل الشركة) = {int(quick_calc_cash_after)}. "
+        f"قيمة 'الفلوس معايا تراكمي' اليوم = {int(today_cumulative)}."
+    )
 
     st.markdown("---")
-    if st.button("\u2705 إنهاء اليوم للمكن"):
-        for i, row in daily_df.iterrows():
-            open_balance = safe_int(row['رصيد الفتح'])
-            added = safe_int(row['رصيد مضاف'])
-            end_balance = safe_int(row['رصيد نهاية'])
+    if st.button("✅ إنهاء اليوم للمكن"):
+        # حفظ سجل اليوم في جدول MACHINE_FILE
+        for i, row in edited_df.iterrows():
+            open_balance = safe_int(row["رصيد الفتح"])
+            added = safe_int(row["رصيد مضاف"])
+            end_balance = safe_int(row["رصيد نهاية"])
             sold = int(open_balance) + int(added) - int(end_balance)
-            save_row(MACHINE_FILE, [today_str, row['المكنة'], int(open_balance), int(added), int(end_balance), int(sold)])
+            save_row(
+                MACHINE_FILE,
+                [today_str, row["المكنة"], int(open_balance), int(added), int(end_balance), int(sold)]
+            )
 
-        # تصفير تحصيل الشركة (إجمالي اليوم) عند إنهاء اليوم
-        meta.loc[meta['التاريخ'] == today_str, 'تحصيل الشركة (إجمالي)'] = 0
-        overwrite_data(MACHINE_DAY_META_FILE, meta)
-
-        add_log(f"إنهاء يوم المكن {today_str} | إجمالي مباع {int(totals_sold)} | تحصيل الشركة 0 | الفلوس معي اليوم {int(cash_after_input)} | الفلوس معايا تراكمي {int(today_cumulative)}")
-
-        next_df = pd.DataFrame(columns=daily_df.columns)
-        for _, row in daily_df.iterrows():
+        # تجهيز أرصدة اليوم التالي:
+        # - رصيد الفتح = رصيد نهاية اليوم الحالي
+        # - رصيد المضاف = 0
+        # - رصيد النهاية = 0 (زي ما طلبت)
+        next_df = pd.DataFrame(columns=expected_cols)
+        for _, row in edited_df.iterrows():
             next_df.loc[len(next_df)] = [
-                row['المكنة'],
-                int(safe_int(row['رصيد نهاية'])),
-                0,
-                int(safe_int(row['رصيد نهاية'])),
+                row["المكنة"],
+                int(safe_int(row["رصيد نهاية"])),  # رصيد فتح الغد = نهاية اليوم الحالي
+                0,                                  # رصيد مضاف الغد
+                0,                                  # رصيد نهاية الغد يبدأ بصفر
             ]
         overwrite_data(MACHINE_DAILY_FILE, next_df)
 
+        # إنشاء سطر اليوم التالي في meta لو مش موجود
         tomorrow = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
         meta_after = load_data(MACHINE_DAY_META_FILE)
-        if tomorrow not in list(meta_after['التاريخ']):
+        if "التاريخ" not in meta_after.columns:
+            meta_after["التاريخ"] = ""
+        if tomorrow not in list(meta_after["التاريخ"]):
             save_row(MACHINE_DAY_META_FILE, [tomorrow, 0, 0, int(today_cumulative), int(today_cumulative)])
 
-        st.success("تم إنهاء اليوم وتحويل رصيد النهاية إلى رصيد فتح لليوم الجديد ✅ (والـ 'فلوس معايا تراكمي' تم حملها لليوم التالي)")
+        add_log(
+            f"إنهاء يوم المكن {today_str} | إجمالي مباع {int(totals_sold)} "
+            f"| تحصيل الشركة {int(new_collect)} | الفلوس معي اليوم {int(cash_after_input)} "
+            f"| الفلوس معايا تراكمي {int(today_cumulative)}"
+        )
+
+        st.success(
+            "تم إنهاء اليوم وتحويل رصيد النهاية إلى رصيد فتح لليوم الجديد ✅ "
+            "(ورصيد نهاية اليوم الجديد يبدأ بصفر، والفلوس معايا تراكمي اتحملت لليوم الجديد)"
+        )
         st.rerun()
 
     st.markdown("---")
-    st.subheader("\U0001F4DA التقرير التراكمي للمكن")
+    st.subheader("📚 التقرير التفصيلي لحركة المكن (كل عملية يومية)")
     st.dataframe(load_data(MACHINE_FILE), use_container_width=True)
 
-    st.subheader("\U0001F4D1 ملخص أيام المكن (تحصيل إجمالي + فلوس الدُرج + تراكمي)")
+    st.subheader("📊 ملخص أيام المكن (تحصيل إجمالي + فلوس الدُرج + تراكمي)")
     st.dataframe(load_data(MACHINE_DAY_META_FILE), use_container_width=True)
-
 # ==========================
 # البيع (اليومي + سجل + ديون/مدفوعات)
 # ==========================
