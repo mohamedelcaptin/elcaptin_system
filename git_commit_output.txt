@@ -1,3 +1,3 @@
-[main e72997e] Auto backup
- 4 files changed, 4 insertions(+), 4 deletions(-)
- create mode 100644 backups/phone_shop_23-Tue-12_3-23-34.db
+[main 704ff87] Auto backup
+ 4 files changed, 3 insertions(+), 3 deletions(-)
+ create mode 100644 backups/phone_shop_25-Thu-12_2-54-01.db

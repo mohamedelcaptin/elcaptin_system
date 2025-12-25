@@ -1,2 +1,1 @@
-To https://github.com/mohamedelcaptin/elcaptin_system.git
-   6d0ab6d..e72997e  main -> main
+fatal: unable to access 'https://github.com/mohamedelcaptin/elcaptin_system.git/': Could not resolve host: github.com
