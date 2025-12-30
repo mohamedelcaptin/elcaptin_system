@@ -1,2 +1,1 @@
-To https://github.com/mohamedelcaptin/elcaptin_system.git
-   ff3c312..58b16de  main -> main
+fatal: unable to access 'https://github.com/mohamedelcaptin/elcaptin_system.git/': Could not resolve host: github.com
